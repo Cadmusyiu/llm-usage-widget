@@ -1,0 +1,6 @@
+# llm-usage-dashboard has zero hard dependencies — it runs on the Python 3
+# standard library (http.server, urllib, json, sqlite3, hashlib, hmac).
+# UI is pure SVG + Chart.js loaded via CDN, so no frontend build step either.
+#
+# Optional, only if you wire in a provider that needs them:
+#   requests        # convenience HTTP (the built-ins use urllib instead)

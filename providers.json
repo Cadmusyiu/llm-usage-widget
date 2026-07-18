@@ -1,0 +1,70 @@
+{
+  "_comment": "Sample provider config — edit to match YOUR LLM stack. quota_api: zai | deepseek-balance | openai-usage | none. key_source.type: claude-settings | keychain | env | literal. Keys are read at runtime from the configured source; they are never written to this file.",
+  "providers": [
+    {
+      "id": "zai",
+      "label": "Z.AI Coding Plan",
+      "kind": "coding-plan",
+      "quota_api": "zai",
+      "key_source": {
+        "type": "claude-settings",
+        "field": "ANTHROPIC_AUTH_TOKEN"
+      },
+      "model_patterns": [
+        "glm"
+      ],
+      "color": "#00e5a0",
+      "plan_cost_usd": 29.99
+    },
+    {
+      "id": "deepseek",
+      "label": "DeepSeek API",
+      "kind": "pay-as-you-go",
+      "quota_api": "deepseek-balance",
+      "key_source": {
+        "type": "env",
+        "var": "DEEPSEEK_API_KEY"
+      },
+      "model_patterns": [
+        "deepseek"
+      ],
+      "color": "#ffb454",
+      "low_balance_warn_usd": 1.0
+    },
+    {
+      "id": "grok",
+      "label": "Grok (xAI)",
+      "kind": "pay-as-you-go",
+      "quota_api": "none",
+      "_comment": "xAI has no balance API (balances are console-only). Local estimate: credit_topup_usd minus locally tracked spend. Records with cost=0 are priced via price_per_mtok.",
+      "key_source": {
+        "type": "env",
+        "var": "XAI_API_KEY"
+      },
+      "model_patterns": [
+        "grok"
+      ],
+      "color": "#ff6e5e",
+      "credit_topup_usd": 5.0,
+      "price_per_mtok": {
+        "input": 3.0,
+        "output": 15.0
+      },
+      "low_balance_warn_usd": 0.5
+    },
+    {
+      "id": "anthropic",
+      "label": "Claude",
+      "kind": "other",
+      "quota_api": "none",
+      "model_patterns": [
+        "claude",
+        "fable",
+        "opus",
+        "sonnet",
+        "haiku"
+      ],
+      "color": "#c792ea"
+    }
+  ]
+}

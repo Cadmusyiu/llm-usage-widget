@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>🧠 LLM Usage Dashboard</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: #0d1117; color: #c9d1d9; padding: 16px; max-width: 700px; margin: 0 auto; }
+h1 { font-size: 18px; margin-bottom: 4px; }
+h2 { font-size: 14px; color: #8b949e; margin-bottom: 8px; }
+.subtitle { color: #8b949e; font-size: 12px; margin-bottom: 16px; }
+
+/* ── KPI Grid ── */
+.kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.kpi { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 10px; }
+.kpi .label { font-size: 10px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.3px; }
+.kpi .value { font-size: 20px; font-weight: 700; margin-top: 2px; }
+.kpi .sub { font-size: 11px; color: #8b949e; margin-top: 2px; }
+.kpi-cost .value { color: #d29922; }
+
+/* ── Usage Bar ── */
+.usage-bar { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px; margin-bottom: 16px; }
+.usage-bar .bar-label { font-size: 11px; color: #8b949e; margin-bottom: 6px; display: flex; justify-content: space-between; }
+.usage-bar .big-bar { height: 20px; background: #0d1117; border-radius: 10px; overflow: hidden; display: flex; }
+.usage-bar .big-bar .seg { height: 100%; transition: width 0.3s; }
+.usage-bar .big-bar .seg.paid { background: #3fb950; }
+.usage-bar .big-bar .seg.free { background: #58a6ff; }
+.usage-bar .big-bar .seg.deepseek { background: #d29922; }
+.usage-bar .big-bar .seg.unknown { background: #8b949e; }
+.usage-bar .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.usage-bar .legend-item { font-size: 11px; color: #8b949e; display: flex; align-items: center; gap: 4px; }
+.usage-bar .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+/* ── Provider Cap ── */
+.provider-section { margin-bottom: 16px; }
+.provider-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
+.provider-row > :first-child { width: 130px; flex-shrink: 0; }
+.provider-name { font-weight: 600; }
+.bar-track { flex: 1; height: 12px; background: #0d1117; border-radius: 6px; overflow: hidden; }
+.bar { height: 100%; background: #58a6ff; border-radius: 6px; min-width: 2px; }
+.deepseek-bar { background: #d29922; }
+.zai-bar { background: #3fb950; }
+.provider-pct { width: 80px; text-align: right; font-size: 11px; color: #8b949e; }
+.provider-cost { width: 100px; text-align: right; font-size: 11px; color: #8b949e; }
+.provider-bar-group { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.sub-bar-row { display: flex; align-items: center; gap: 4px; }
+.sub-label { width: 32px; font-size: 10px; color: #8b949e; flex-shrink: 0; }
+.sub-bar-row .bar-track { height: 8px; }
+
+/* ── Tier Section ── */
+.section { margin-bottom: 16px; }
+.tier-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
+.tier-row > :first-child { width: 130px; flex-shrink: 0; display: flex; align-items: center; gap: 4px; }
+.tier-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.bar-track { flex: 1; height: 12px; background: #0d1117; border-radius: 6px; overflow: hidden; }
+.bar { height: 100%; background: #58a6ff; border-radius: 6px; min-width: 2px; }
+.cost-bar { background: #d29922; }
+.tier-pct { width: 32px; text-align: right; font-size: 11px; color: #8b949e; }
+.tier-tok { width: 55px; text-align: right; font-size: 11px; font-weight: 600; }
+
+/* ─── Project Line Chart ─── */
+.project-chart { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px; margin-bottom: 16px; }
+.chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.chart-title { font-size: 13px; font-weight: 600; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 8px; font-size: 11px; }
+.chart-legend-item { display: flex; align-items: center; gap: 4px; }
+.chart-legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+.mini-chart-box { background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 6px; margin-bottom: 4px; }
+.mini-chart-box .chart-name { font-size: 10px; color: #8b949e; margin-bottom: 2px; text-align: center; }
+
+/* ── Daily Chart ── */
+.daily-section { margin-bottom: 16px; }
+.daily-scroll { max-height: 250px; overflow-y: auto; }
+.daily-scroll::-webkit-scrollbar { width: 4px; }
+.daily-scroll::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+.day-bar-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; font-size: 11px; }
+.day-label { width: 36px; flex-shrink: 0; color: #8b949e; text-align: right; }
+.day-val { width: 48px; flex-shrink: 0; text-align: right; color: #8b949e; font-size: 10px; }
+
+/* ─── Project Table ─── */
+.project-table { margin-bottom: 16px; }
+.project-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.project-table th, .project-table td { padding: 5px 8px; text-align: left; border-bottom: 1px solid #21262d; }
+.project-table th { color: #8b949e; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
+.project-table tr:hover td { background: #1c2128; }
+.num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+.time-cell { white-space: nowrap; }
+
+/* ─── Recent Table ─── */
+.recent-section { margin-bottom: 16px; }
+.recent-section table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.recent-section th, .recent-section td { padding: 5px 8px; text-align: left; border-bottom: 1px solid #21262d; }
+.recent-section th { color: #8b949e; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
+.recent-section tr:hover td { background: #1c2128; }
+.recent-section .time-cell { white-space: nowrap; }
+
+/* ─── Footer ─── */
+.footer { text-align: center; font-size: 10px; color: #484f58; padding: 12px; }
+a { color: #58a6ff; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<h1>🧠 LLM Usage Dashboard</h1>
+<div class="subtitle">2026-06-30 18:38 HKT</div>
+
+<div class="kpi-grid">
+<div class="kpi"><div class="label">Sessions</div><div class="value">519</div><div class="sub">+301 this week</div></div>
+<div class="kpi"><div class="label">Tokens</div><div class="value">2.37M</div><div class="sub">2.20M in / 172.2K out</div></div>
+<div class="kpi kpi-cost"><div class="label">Cost</div><div class="value">$0.5598</div><div class="sub">+$0.0737 this week</div></div>
+</div>
+
+<div class="usage-bar">
+<div class="bar-label">
+<span>Model Usage Distribution</span>
+<span>519 sessions</span>
+</div>
+<div class="big-bar">
+<div class="seg paid" style="width:40.7%"></div><div class="seg free" style="width:17.9%"></div><div class="seg deepseek" style="width:41.4%"></div>
+</div>
+<div class="legend">
+<span class="legend-item"><span class="legend-dot" style="background:#3fb950"></span>Paid (GLM-5) 220次 963.0K</span><span class="legend-item"><span class="legend-dot" style="background:#58a6ff"></span>Free (GLM-4.7-Flash) 93次 424.1K</span><span class="legend-item"><span class="legend-dot" style="background:#d29922"></span>DeepSeek API 204次 980.2K</span><span class="legend-item"><span class="legend-dot" style="background:#8b949e"></span>Unknown 2次 0</span>
+</div>
+</div>
+
+<div class="provider-section">
+<h2>💳 Provider Cap Tracking</h2>
+<div class="provider-row"><div class="provider-name">DeepSeek API</div><div class="bar-track"><div class="bar deepseek-bar" style="width:95.4%"></div></div><span class="provider-pct">$4.62 remaining</span><span class="provider-cost">95% spent</span></div><div class="provider-row"><div class="provider-name">Z.AI Pro</div><div class="provider-bar-group">
+<div class="sub-bar-row"><span class="sub-label">5h</span><div class="bar-track"><div class="bar zai-bar" style="width:0.0%"></div></div><span class="provider-pct">0</span></div>
+<div class="sub-bar-row"><span class="sub-label">Week</span><div class="bar-track"><div class="bar zai-bar" style="width:0.0%"></div></div><span class="provider-pct">0</span></div>
+</div><span class="provider-cost">$29.99/mo</span></div>
+</div>
+
+<div class="section">
+<h2>📊 Project Daily Line Charts (31 days)</h2>
+<div class="project-chart">
+<div class="chart-header">
+<div class="chart-title">Tokens (×1000)</div>
+<div class="chart-legend">
+<span class="chart-legend-item"><span class="chart-legend-dot" style="background:#8b949e"></span>CadAI (Main)</span><span class="chart-legend-item"><span class="chart-legend-dot" style="background:#8b949e"></span>GF (mac mini)</span>
+</div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:4px;">
+<div class="mini-chart-box"><div class="chart-name">CadAI (Main)</div><svg width="240" height="60" xmlns="http://www.w3.org/2000/svg">
+<line x1="30" y1="20.0" x2="240" y2="20.0" stroke="#21262d" stroke-width="1" /><line x1="30" y1="25.0" x2="240" y2="25.0" stroke="#21262d" stroke-width="1" /><line x1="30" y1="30.0" x2="240" y2="30.0" stroke="#21262d" stroke-width="1" /><line x1="30" y1="35.0" x2="240" y2="35.0" stroke="#21262d" stroke-width="1" /><line x1="30" y1="40.0" x2="240" y2="40.0" stroke="#21262d" stroke-width="1" />
+<polyline points="30.0,40.0 36.0,40.0 42.0,40.0 48.0,40.0 54.0,40.0 60.0,40.0 66.0,40.0 72.0,40.0 78.0,40.0 84.0,40.0 90.0,40.0 96.0,40.0 102.0,40.0 108.0,40.0 114.0,40.0 120.0,40.0 126.0,40.0 132.0,40.0 138.0,40.0 144.0,20.0 150.0,38.3 156.0,36.3 162.0,34.8 168.0,33.9 174.0,36.3 180.0,34.5 186.0,35.7 192.0,31.5 198.0,33.0 204.0,35.0 210.0,26.7" fill="none" stroke="#8b949e" stroke-width="1.5" stroke-linejoin="round" />
+<text x="30.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="36.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="42.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="48.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="54.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="60.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="66.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="72.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="78.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="84.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="90.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="96.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="102.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="108.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="114.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="120.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="126.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="132.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="138.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="144.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">561K</text><text x="150.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">47K</text><text x="156.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">103K</text><text x="162.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">146K</text><text x="168.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">172K</text><text x="174.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">104K</text><text x="180.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">153K</text><text x="186.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">119K</text><text x="192.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">238K</text><text x="198.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">196K</text><text x="204.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">140K</text><text x="210.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">372K</text>
+<text x="30.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">05/31</text><text x="48.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/03</text><text x="66.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/06</text><text x="84.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/09</text><text x="102.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/12</text><text x="120.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/15</text><text x="138.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/18</text><text x="156.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/21</text><text x="174.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/24</text><text x="192.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/27</text><text x="210.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/30</text>
+</svg></div><div class="mini-chart-box"><div class="chart-name">GF (mac mini)</div><svg width="240" height="60" xmlns="http://www.w3.org/2000/svg">
+<line x1="30" y1="20.0" x2="240" y2="20.0" stroke="#21262d" stroke-width="1" /><line x1="30" y1="25.0" x2="240" y2="25.0" stroke="#21262d" stroke-width="1" /><line x1="30" y1="30.0" x2="240" y2="30.0" stroke="#21262d" stroke-width="1" /><line x1="30" y1="35.0" x2="240" y2="35.0" stroke="#21262d" stroke-width="1" /><line x1="30" y1="40.0" x2="240" y2="40.0" stroke="#21262d" stroke-width="1" />
+<polyline points="30.0,40.0 36.0,40.0 42.0,40.0 48.0,40.0 54.0,40.0 60.0,40.0 66.0,40.0 72.0,40.0 78.0,40.0 84.0,40.0 90.0,40.0 96.0,40.0 102.0,40.0 108.0,40.0 114.0,40.0 120.0,40.0 126.0,40.0 132.0,40.0 138.0,40.0 144.0,40.0 150.0,40.0 156.0,40.0 162.0,40.0 168.0,40.0 174.0,40.0 180.0,40.0 186.0,40.0 192.0,40.0 198.0,39.9 204.0,40.0 210.0,39.6" fill="none" stroke="#8b949e" stroke-width="1.5" stroke-linejoin="round" />
+<text x="30.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="36.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="42.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="48.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="54.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="60.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="66.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="72.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="78.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="84.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="90.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="96.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="102.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="108.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="114.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="120.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="126.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="132.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="138.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="144.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="150.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="156.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="162.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="168.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="174.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="180.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="186.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="192.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="198.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">2K</text><text x="204.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">0</text><text x="210.0" y="10" fill="#8b949e" font-size="8" text-anchor="middle" opacity="0.8">12K</text>
+<text x="30.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">05/31</text><text x="48.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/03</text><text x="66.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/06</text><text x="84.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/09</text><text x="102.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/12</text><text x="120.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/15</text><text x="138.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/18</text><text x="156.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/21</text><text x="174.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/24</text><text x="192.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/27</text><text x="210.0" y="72" fill="#8b949e" font-size="7" text-anchor="middle">06/30</text>
+</svg></div>
+</div>
+</div>
+</div>
+
+<div class="section">
+<h2>🤖 Project Summary</h2>
+<div class="tier-row"><div>CadAI (Main)</div><div class="bar-track"><div class="bar" style="width:100%;background:#58a6ff"></div></div><span class="tier-pct">99%</span><span class="tier-tok">2.35M</span></div><div class="tier-row"><div>GF (mac mini)</div><div class="bar-track"><div class="bar" style="width:0%;background:#58a6ff"></div></div><span class="tier-pct">1%</span><span class="tier-tok">14.3K</span></div>
+</div>
+
+<div class="project-table">
+<h2>📋 Project Table</h2>
+<table>
+<tr><th>Project</th><th class="num-cell">Sessions</th><th class="num-cell">Tokens</th><th class="num-cell">%</th><th class="num-cell">Cost</th></tr>
+<tr><td>CadAI (Main)</td><td class="num-cell">517</td><td class="num-cell">2.35M</td><td class="num-cell">99%</td><td class="num-cell">$0.5588</td></tr><tr><td>GF (mac mini)</td><td class="num-cell">2</td><td class="num-cell">14.3K</td><td class="num-cell">1%</td><td class="num-cell">$0.0010</td></tr>
+</table>
+</div>
+
+<div class="daily-section">
+<h2>📈 Daily Usage (31 days)</h2>
+<div class="daily-scroll">
+<div class="day-bar-row"><span class="day-label">05/31</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/01</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/02</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/03</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/04</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/05</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/06</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/07</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/08</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/09</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/10</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/11</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/12</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/13</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/14</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/15</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/16</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/17</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/18</span><div class="bar-track"><div class="bar" style="width:1%"></div></div><span class="day-val">0</span></div><div class="day-bar-row"><span class="day-label">06/19</span><div class="bar-track"><div class="bar" style="width:100%"></div></div><span class="day-val">561K</span></div><div class="day-bar-row"><span class="day-label">06/20</span><div class="bar-track"><div class="bar" style="width:8%"></div></div><span class="day-val">47K</span></div><div class="day-bar-row"><span class="day-label">06/21</span><div class="bar-track"><div class="bar" style="width:18%"></div></div><span class="day-val">103K</span></div><div class="day-bar-row"><span class="day-label">06/22</span><div class="bar-track"><div class="bar" style="width:26%"></div></div><span class="day-val">146K</span></div><div class="day-bar-row"><span class="day-label">06/23</span><div class="bar-track"><div class="bar" style="width:30%"></div></div><span class="day-val">172K</span></div><div class="day-bar-row"><span class="day-label">06/24</span><div class="bar-track"><div class="bar" style="width:18%"></div></div><span class="day-val">104K</span></div><div class="day-bar-row"><span class="day-label">06/25</span><div class="bar-track"><div class="bar" style="width:27%"></div></div><span class="day-val">153K</span></div><div class="day-bar-row"><span class="day-label">06/26</span><div class="bar-track"><div class="bar" style="width:21%"></div></div><span class="day-val">119K</span></div><div class="day-bar-row"><span class="day-label">06/27</span><div class="bar-track"><div class="bar" style="width:42%"></div></div><span class="day-val">238K</span></div><div class="day-bar-row"><span class="day-label">06/28</span><div class="bar-track"><div class="bar" style="width:35%"></div></div><span class="day-val">198K</span></div><div class="day-bar-row"><span class="day-label">06/29</span><div class="bar-track"><div class="bar" style="width:25%"></div></div><span class="day-val">140K</span></div><div class="day-bar-row"><span class="day-label">06/30</span><div class="bar-track"><div class="bar" style="width:68%"></div></div><span class="day-val">384K</span></div>
+</div>
+<br>
+<h2>💲 Daily Cost</h2>
+<div class="daily-scroll">
+<div class="day-bar-row"><span class="day-label">05/31</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/01</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/02</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/03</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/04</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/05</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/06</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/07</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/08</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/09</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/10</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/11</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/12</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/13</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/14</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/15</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/16</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/17</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/18</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/19</span><div class="bar-track"><div class="bar cost-bar" style="width:100%"></div></div><span class="day-val">$0.3169</span></div><div class="day-bar-row"><span class="day-label">06/20</span><div class="bar-track"><div class="bar cost-bar" style="width:13%"></div></div><span class="day-val">$0.0436</span></div><div class="day-bar-row"><span class="day-label">06/21</span><div class="bar-track"><div class="bar cost-bar" style="width:17%"></div></div><span class="day-val">$0.0566</span></div><div class="day-bar-row"><span class="day-label">06/22</span><div class="bar-track"><div class="bar cost-bar" style="width:7%"></div></div><span class="day-val">$0.0237</span></div><div class="day-bar-row"><span class="day-label">06/23</span><div class="bar-track"><div class="bar cost-bar" style="width:14%"></div></div><span class="day-val">$0.0453</span></div><div class="day-bar-row"><span class="day-label">06/24</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/25</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/26</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/27</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/28</span><div class="bar-track"><div class="bar cost-bar" style="width:8%"></div></div><span class="day-val">$0.0267</span></div><div class="day-bar-row"><span class="day-label">06/29</span><div class="bar-track"><div class="bar cost-bar" style="width:1%"></div></div><span class="day-val">$0.0000</span></div><div class="day-bar-row"><span class="day-label">06/30</span><div class="bar-track"><div class="bar cost-bar" style="width:14%"></div></div><span class="day-val">$0.0469</span></div>
+</div>
+</div>
+
+<div class="recent-section">
+<h2>🕐 Recent Sessions</h2>
+<div style="max-height: 300px; overflow-y: auto;">
+<table>
+<tr><th>Time</th><th>Project</th><th>Model</th><th class="num-cell">Tokens</th><th class="num-cell">Cost</th></tr>
+<tr><td>06/30 18:36</td><td>CadAI (Main)</td><td>glm-5-turbo <span style="color:#3fb950">paid</span></td><td class="num-cell">40.5K</td><td class="num-cell">$0.0000</td></tr><tr><td>06/30 18:34</td><td>CadAI (Main)</td><td>glm-5-turbo <span style="color:#3fb950">paid</span></td><td class="num-cell">69.3K</td><td class="num-cell">$0.0000</td></tr><tr><td>06/30 18:04</td><td>CadAI (Main)</td><td>glm-4.7-flash <span style="color:#58a6ff">free</span></td><td class="num-cell">0</td><td class="num-cell">$0.0000</td></tr><tr><td>06/30 18:04</td><td>CadAI (Main)</td><td>deepseek-chat <span style="color:#d29922">deepseek</span></td><td class="num-cell">4.1K</td><td class="num-cell">$0.0018</td></tr><tr><td>06/30 18:03</td><td>CadAI (Main)</td><td>glm-4.7-flash <span style="color:#58a6ff">free</span></td><td class="num-cell">0</td><td class="num-cell">$0.0000</td></tr><tr><td>06/30 18:03</td><td>CadAI (Main)</td><td>deepseek-chat <span style="color:#d29922">deepseek</span></td><td class="num-cell">2.9K</td><td class="num-cell">$0.0014</td></tr><tr><td>06/30 18:03</td><td>CadAI (Main)</td><td>deepseek-chat <span style="color:#d29922">deepseek</span></td><td class="num-cell">2.4K</td><td class="num-cell">$0.0013</td></tr><tr><td>06/30 18:03</td><td>CadAI (Main)</td><td>deepseek-chat <span style="color:#d29922">deepseek</span></td><td class="num-cell">9.2K</td><td class="num-cell">$0.0030</td></tr><tr><td>06/30 18:02</td><td>CadAI (Main)</td><td>glm-4.7-flash <span style="color:#58a6ff">free</span></td><td class="num-cell">23.2K</td><td class="num-cell">$0.0016</td></tr><tr><td>06/30 18:01</td><td>CadAI (Main)</td><td>deepseek-chat <span style="color:#d29922">deepseek</span></td><td class="num-cell">14.8K</td><td class="num-cell">$0.0045</td></tr><tr><td>06/30 18:00</td><td>CadAI (Main)</td><td>glm-4.7-flash <span style="color:#58a6ff">free</span></td><td class="num-cell">23.2K</td><td class="num-cell">$0.0016</td></tr><tr><td>06/30 15:03</td><td>CadAI (Main)</td><td>deepseek-chat <span style="color:#d29922">deepseek</span></td><td class="num-cell">1.5K</td><td class="num-cell">$0.0011</td></tr><tr><td>06/30 15:03</td><td>CadAI (Main)</td><td>deepseek-chat <span style="color:#d29922">deepseek</span></td><td class="num-cell">1.4K</td><td class="num-cell">$0.0011</td></tr><tr><td>06/30 15:03</td><td>CadAI (Main)</td><td>deepseek-chat <span style="color:#d29922">deepseek</span></td><td class="num-cell">3.0K</td><td class="num-cell">$0.0015</td></tr><tr><td>06/30 15:03</td><td>CadAI (Main)</td><td>deepseek-chat <span style="color:#d29922">deepseek</span></td><td class="num-cell">2.9K</td><td class="num-cell">$0.0014</td></tr><tr><td>06/30 15:02</td><td>CadAI (Main)</td><td>deepseek-chat <span style="color:#d29922">deepseek</span></td><td class="num-cell">1.7K</td><td class="num-cell">$0.0011</td></tr><tr><td>06/30 15:02</td><td>CadAI (Main)</td><td>deepseek-chat <span style="color:#d29922">deepseek</span></td><td class="num-cell">1.4K</td><td class="num-cell">$0.0011</td></tr><tr><td>06/30 15:02</td><td>CadAI (Main)</td><td>deepseek-chat <span style="color:#d29922">deepseek</span></td><td class="num-cell">2.3K</td><td class="num-cell">$0.0013</td></tr><tr><td>06/30 15:02</td><td>CadAI (Main)</td><td>deepseek-chat <span style="color:#d29922">deepseek</span></td><td class="num-cell">3.4K</td><td class="num-cell">$0.0016</td></tr><tr><td>06/30 15:01</td><td>CadAI (Main)</td><td>glm-4.7-flash <span style="color:#58a6ff">free</span></td><td class="num-cell">0</td><td class="num-cell">$0.0000</td></tr><tr><td>06/30 15:00</td><td>CadAI (Main)</td><td>glm-4.7-flash <span style="color:#58a6ff">free</span></td><td class="num-cell">23.1K</td><td class="num-cell">$0.0016</td></tr><tr><td>06/30 14:49</td><td>CadAI (Main)</td><td>glm-4.7-flash <span style="color:#58a6ff">free</span></td><td class="num-cell">7.2K</td><td class="num-cell">$0.0006</td></tr><tr><td>06/30 14:16</td><td>CadAI (Main)</td><td>glm-4.7-flash <span style="color:#58a6ff">free</span></td><td class="num-cell">20.1K</td><td class="num-cell">$0.0015</td></tr><tr><td>06/30 12:04</td><td>CadAI (Main)</td><td>deepseek-chat <span style="color:#d29922">deepseek</span></td><td class="num-cell">2.9K</td><td class="num-cell">$0.0015</td></tr><tr><td>06/30 12:04</td><td>CadAI (Main)</td><td>deepseek-chat <span style="color:#d29922">deepseek</span></td><td class="num-cell">9.4K</td><td class="num-cell">$0.0031</td></tr><tr><td>06/30 12:04</td><td>CadAI (Main)</td><td>glm-4.7-flash <span style="color:#58a6ff">free</span></td><td class="num-cell">1.5K</td><td class="num-cell">$0.0001</td></tr><tr><td>06/30 12:03</td><td>CadAI (Main)</td><td>glm-4.7-flash <span style="color:#58a6ff">free</span></td><td class="num-cell">536</td><td class="num-cell">$0.0001</td></tr><tr><td>06/30 12:03</td><td>CadAI (Main)</td><td>glm-4.7-flash <span style="color:#58a6ff">free</span></td><td class="num-cell">1.6K</td><td class="num-cell">$0.0001</td></tr><tr><td>06/30 12:02</td><td>CadAI (Main)</td><td>glm-4.7-flash <span style="color:#58a6ff">free</span></td><td class="num-cell">513</td><td class="num-cell">$0.0001</td></tr><tr><td>06/30 12:02</td><td>CadAI (Main)</td><td>glm-4.7-flash <span style="color:#58a6ff">free</span></td><td class="num-cell">564</td><td class="num-cell">$0.0001</td></tr>
+</table>
+</div>
+</div>
+
+<div class="footer">LLM Usage Dashboard · Generated 2026-06-30 18:38 · Data from OpenClaw sessions</div>
+</body>
+</html>
